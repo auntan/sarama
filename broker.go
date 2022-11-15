@@ -43,6 +43,7 @@ type Broker struct {
 	responseRate               metrics.Meter
 	responseSize               metrics.Histogram
 	requestsInFlight           metrics.Counter
+	commitDuration             metrics.Histogram
 	protocolRequestsRate       map[int16]metrics.Meter
 	brokerIncomingByteRate     metrics.Meter
 	brokerRequestRate          metrics.Meter
@@ -54,6 +55,7 @@ type Broker struct {
 	brokerResponseSize         metrics.Histogram
 	brokerRequestsInFlight     metrics.Counter
 	brokerThrottleTime         metrics.Histogram
+	brokerCommitDuration       metrics.Histogram
 	brokerProtocolRequestsRate map[int16]metrics.Meter
 
 	kerberosAuthenticator               GSSAPIKerberosAuth
@@ -220,6 +222,7 @@ func (b *Broker) Open(conf *Config) error {
 		b.responseRate = metrics.GetOrRegisterMeter("response-rate", b.metricRegistry)
 		b.responseSize = getOrRegisterHistogram("response-size", b.metricRegistry)
 		b.requestsInFlight = metrics.GetOrRegisterCounter("requests-in-flight", b.metricRegistry)
+		b.commitDuration = getOrRegisterHistogram("commit-duration-in-ms", b.metricRegistry)
 		b.protocolRequestsRate = map[int16]metrics.Meter{}
 		// Do not gather metrics for seeded broker (only used during bootstrap) because they share
 		// the same id (-1) and are already exposed through the global metrics above
@@ -509,9 +512,15 @@ func (b *Broker) Fetch(request *FetchRequest) (*FetchResponse, error) {
 func (b *Broker) CommitOffset(request *OffsetCommitRequest) (*OffsetCommitResponse, error) {
 	response := new(OffsetCommitResponse)
 
+	t := time.Now()
 	err := b.sendAndReceive(request, response)
 	if err != nil {
 		return nil, err
+	}
+	dur := time.Since(t).Milliseconds()
+	b.commitDuration.Update(dur)
+	if b.brokerCommitDuration != nil {
+		b.brokerCommitDuration.Update(dur)
 	}
 
 	return response, nil
@@ -1651,6 +1660,7 @@ func (b *Broker) registerMetrics() {
 	b.brokerResponseSize = b.registerHistogram("response-size")
 	b.brokerRequestsInFlight = b.registerCounter("requests-in-flight")
 	b.brokerThrottleTime = b.registerHistogram("throttle-time-in-ms")
+	b.brokerCommitDuration = b.registerHistogram("commit-duration-in-ms")
 	b.brokerProtocolRequestsRate = map[int16]metrics.Meter{}
 }
 

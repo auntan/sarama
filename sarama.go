@@ -43,6 +43,8 @@ Broker related metrics:
 	|                                                         |            | for all brokers                                               |
 	| requests-in-flight-for-broker-<broker-id>               | counter    | The current number of in-flight requests awaiting a response  |
 	|                                                         |            | for a given broker                                            |
+	| commit-duration-in-ms                                   | histogram  | Distribution of the commit duration in ms for all brokers     |
+	| commit-duration-in-ms-for-broker-<broker-id>            | histogram  | Distribution of the commit duration in ms for a given broker  |
 	| protocol-requests-rate-<api-key>          	          | meter      | Number of api requests sent to the brokers for all brokers    |
 	|                                                         |            | https://kafka.apache.org/protocol.html#protocol_api_keys      |                                        |
 	| protocol-requests-rate-<api-key>-for-broker-<broker-id> | meter      | Number of packets sent to the brokers by api-key for a given  |
